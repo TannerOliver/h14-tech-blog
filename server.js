@@ -57,3 +57,54 @@
 //  Use MVC file structure
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+//  Requiring stuff in.
+const path = require('path');
+const express = require('express');
+const session = require('express-session');
+const exphbs = require('express-handlebars');
+const routes = require('./controllers');
+const helpers = require('./utils/helpers');
+
+//  Telling sequelize to require the connection info in theconfig folder
+const sequelize = require('./config/connection');
+//  Initializing sequelize with session store
+const SequelizeStore = require('connect-session-sequelize')(session.Store);
+
+//  Defining exress
+const app = express();
+//  Telling it what port to listen to
+const PORT = process.env.PORT || 3001;
+
+//  Creating helpers with express handle bars
+const hbs = exphbs.create({ helpers });
+
+//  I believe this is making a new session when someone is logged in
+//  TODO: Look into what this is doing more
+const sess = {
+  secret: 'Super secret secret',
+  cookie: {},
+  resave: false,
+  saveUninitialized: true,
+  store: new SequelizeStore({
+    db: sequelize
+  })
+};
+
+//  Telling express to use to use session and the sess variable
+app.use(session(sess));
+
+//  setting up the handle bars engine
+app.engine('handlebars', hbs.engine);
+app.set('view engine', 'handlebars');
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+//  Telling express to use the routes
+app.use(routes);
+
+//  Syncing sequelize
+sequelize.sync({ force: false }).then(() => {
+  app.listen(PORT, () => console.log('Now listening'));
+});
